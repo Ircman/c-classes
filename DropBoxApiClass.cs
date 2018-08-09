@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -67,7 +67,9 @@ namespace WindowsFormsApplication1
                 var buffer = download.GetContentAsByteArrayAsync();
                 buffer.Wait();
                 var d = buffer.Result;
-                File.WriteAllBytes(fileName,d);
+                string pathToDownload = ChouseFiletoDownload(fileName);
+                
+                File.WriteAllBytes(pathToDownload, d);
             }
 
         }
@@ -76,7 +78,7 @@ namespace WindowsFormsApplication1
         {
             using (var dbx = new DropboxClient(token))
             {
-            string filePath = ChouseFile();//путь к файлу на компьютере
+            string filePath = ChouseFiletoUpload();//путь к файлу на компьютере
             string url = string.Empty;
             string fileName=@"test.txt";//название файла которое запишется на дропбох
             string folderName= String.Empty;//"/foldername";//папка на дроп боксе 
@@ -94,7 +96,7 @@ namespace WindowsFormsApplication1
 
         }
         //выбераем файл 
-        public string ChouseFile()
+        public string ChouseFiletoUpload()
         {
 
             using (OpenFileDialog ofd = new OpenFileDialog() { Multiselect = false })
@@ -105,6 +107,21 @@ namespace WindowsFormsApplication1
                     return ofd.FileName;
                 }
                 return ofd.FileName;
+            }
+        }
+
+        public string ChouseFiletoDownload(string fileName)
+        {
+
+            using (SaveFileDialog sfd = new SaveFileDialog() {  })
+            {
+                sfd.FileName = fileName;
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+
+                    return sfd.FileName;
+                }
+                return sfd.FileName;
             }
         }
     }
