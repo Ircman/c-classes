@@ -29,7 +29,7 @@
         
 
         /// <summary>
-        /// сохронение в файл
+        /// сохрание в файл
         /// </summary>
         public void Save()
         {
