@@ -14,7 +14,7 @@
             {
                 using (FileStream fs = new FileStream(_filePach, FileMode.Open))
                 {
-                    XmlSerializer xser = new XmlSerializer(typeof(WorkerDataStruct));
+                    XmlSerializer xser = new XmlSerializer(typeof(List<WorkerDataStruct>));
                     WorkerDataList = (List<WorkerDataStruct>) xser.Deserialize(fs);
                     fs.Close();
                 }
