@@ -1,0 +1,553 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace ProjectManager.ClassFolder 
+{
+    /// <summary>
+    /// Класс содержит информацию для авторизации 
+    /// </summary>
+    public static class FtpUserInfoVo
+    {
+        public static string Host { get; set; }
+        public static string DownloadPath { get; set; }
+        public static string Password { get; set; }
+        public static string Port { get; set; }
+        public static string UserName { get; set; }
+        public static string ftpConfig = "ftp.conf";
+        /// <summary>
+        /// Метод читает данны из файла конфигурации ftp
+        /// </summary>
+        /// <returns></returns>
+        public static bool ReadFile()
+        {
+            
+            if (File.Exists(ftpConfig))
+            {
+              string[] dataFromFile =  File.ReadAllLines(ftpConfig);
+                Host = dataFromFile[0];
+                UserName = dataFromFile[1];
+                Password = dataFromFile[2];
+                Port = dataFromFile[3];
+                return true;
+            }
+            else
+            {
+                MessageBox.Show(@"ERROR can't read: " + ftpConfig + @" file", @"ERROR", MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return false;
+            }
+        }
+    }
+
+    public class ftpServer2 
+    {
+        /// <summary>
+        /// Структура данных для путей на FTP 
+        /// </summary>
+        public struct FtpDataStuct
+        {
+            /// <summary>
+            /// путь на Ftp сервере
+            /// </summary>
+            public string FtpPath;
+            /// <summary>
+            /// Проверен ли файл или папка
+            /// </summary>
+            public bool Checked;
+        }
+        /// <summary>
+        /// Переменная отвечает за остановку цикла
+        /// </summary>
+        private  bool stop = true;
+        /// <summary>
+        /// Переменая отвечает за чтение в FtpDatalList Root каталога на FTP
+        /// </summary>
+        private  bool flag = true;
+
+        private List<string> ErrorList;
+        /// <summary>
+        /// Временный список файлов и папок на FTP
+        /// </summary>
+        
+        /// <summary>
+        /// Список путей на FTP
+        /// </summary>
+        public List<FtpDataStuct> FtpDatalList = new List<FtpDataStuct>();
+        private List<FtpDataStuct> _tmplist = new List<FtpDataStuct>();
+
+        private int _foldersCount = 0;
+        private int _filesCount = 0;
+        #region Member declaration
+        /// <summary>
+        /// очередь для скачивания
+        /// </summary>
+        private readonly Queue<string> _downloadlist = new Queue<string>();
+        /// <summary>
+        /// Данные для авторизации на FTP
+        /// </summary>
+        private static NetworkCredential _networkCredential;
+        private readonly object _sync = new object();
+        #endregion
+
+        public ftpServer2()
+        {
+            FtpUserInfoVo.ReadFile();
+            _networkCredential = new NetworkCredential(FtpUserInfoVo.UserName, FtpUserInfoVo.Password);
+        }
+
+        protected virtual async Task FtpFileCreationTime(Uri url)
+        {
+            try
+            {
+                var creationtime = WebRequest.Create(url) as FtpWebRequest;
+                if (creationtime != null)
+                {
+                    creationtime.UsePassive = false;
+                    creationtime.UseBinary = true;
+                    creationtime.Headers["User-Agent"] = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5";
+                    creationtime.Credentials = _networkCredential;
+                    creationtime.Method = WebRequestMethods.Ftp.GetDateTimestamp;
+                    using (var filecreationtime = await creationtime.GetResponseAsync() as FtpWebResponse)
+                    {
+                       // return filecreationtime != null ? filecreationtime.LastModified : DateTime.Now;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+           // return DateTime.Now;
+        }
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
+        private async void StartDownloading()
+        {
+            while (_downloadlist.Count > 0)
+            {
+                try
+                {
+                    #region File Path Configuration
+                    var sourcefilepath = _downloadlist.Dequeue();
+                    var destinationfilepath = string.Format("{0}\\{1}", FtpUserInfoVo.DownloadPath,
+                        Path.GetFileName(sourcefilepath));
+                    #endregion
+                    var request = WebRequest.Create(sourcefilepath) as FtpWebRequest;
+                    if (request == null) continue;
+                    request.UseBinary = true;
+                    request.Timeout = 1200000;
+                    request.ReadWriteTimeout = 1200000;
+                    request.UsePassive = true;
+                    request.KeepAlive = false;
+                    request.EnableSsl = false;
+                    request.Headers["User-Agent"] = "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.9.1.5) Gecko/20091102 Firefox/3.5.5";
+                    request.Credentials = _networkCredential;
+                    request.Method = WebRequestMethods.Ftp.DownloadFile;
+                    using (var response = (FtpWebResponse)await request.GetResponseAsync())
+                    {
+                        lock (_sync)
+                        {
+                            Console.WriteLine("Downloading file " + sourcefilepath);
+                            if (response.ContentLength <= 0) continue;
+                            using (var file = File.Create(destinationfilepath))
+                            {
+                                var responseStream = response.GetResponseStream();
+                                if (responseStream == null) continue;
+                                responseStream.CopyTo(file);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(string.Format("Ftp Host : {0}", FtpUserInfoVo.Host));
+                    Console.WriteLine(ex);
+                }
+            }
+        }
+        public void DownloadFiles(string directory)
+        {
+            try
+            {
+                var url = string.IsNullOrEmpty(directory) ? HostUrl : HostUrl + "/" + directory;
+                var ftprequest = WebRequest.Create(url);
+                ftprequest.Method = WebRequestMethods.Ftp.ListDirectory;
+                ftprequest.Credentials = _networkCredential;
+                ftprequest.Timeout = 1200000;
+                using (var ftpresponse = (FtpWebResponse)ftprequest.GetResponse())
+                {
+                    var responcestream = ftpresponse.GetResponseStream();
+                    if (responcestream != null)
+                    {
+                        using (var streamreader = new StreamReader(responcestream))
+                        {
+                            while (!streamreader.EndOfStream)
+                            {
+                                var file = streamreader.ReadLine();
+                                if (file == null) continue;
+                                var filename = file.Split('/').Last();
+                                if (!file.Contains("."))
+                                {
+                                    DownloadFiles(directory + "/" + filename);
+                                }
+                                file = url + "/" + filename;
+                                _downloadlist.Enqueue(file);
+                            }
+                        }
+                    }
+                }
+                if (_downloadlist.Count > 0 && _downloadlist.ElementAt(0).Equals("access.log"))
+                {
+                    _downloadlist.Dequeue();
+                }
+                StartDownloading();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(string.Format("Connecting to Ftp Host : {0} with username : {1}",
+                    FtpUserInfoVo.Host, _networkCredential.UserName));
+                Console.WriteLine(ex);
+            }
+        }
+        /// <summary>
+        /// Метод загружает файл на Ftp
+        /// </summary>
+        /// <param name="directory">путь на Ftp</param>
+        /// <param name="filepath">путь к файлу</param>
+        public void UploadFile(string directory, string filepath)
+        {
+            try
+            {
+                var fs = new FileStream(filepath, FileMode.Open);
+                var filename = Path.GetFileName(filepath);
+                var url = string.IsNullOrEmpty(directory) ? HostUrl : HostUrl + "/" + directory + "/" + filename;
+                var ftprequest = WebRequest.Create(url);
+                ftprequest.Method = WebRequestMethods.Ftp.UploadFile;
+                ftprequest.Credentials = _networkCredential;
+                ftprequest.Timeout = 1200000;
+                using (var ftpstream = ftprequest.GetRequestStream())
+                {
+                    var buffer = new byte[fs.Length];
+                    fs.Read(buffer, 0, buffer.Length);
+                    fs.Close();
+                    ftpstream.Write(buffer, 0, buffer.Length);
+                    ftpstream.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(string.Format("Ftp Host : {0} with username : {1}",
+                    FtpUserInfoVo.Host, _networkCredential.UserName));
+                Console.WriteLine(ex);
+            }
+        }
+
+        /// <summary>
+        /// Данный метод предназначен для работы с методом ScanFtp(), этот метод получает список файлов на FTP Сервере
+        /// 
+        /// </summary>
+        /// <param name="directory">папка на FTP</param>
+        /// <param name="ftpDatalList">Список куда записавются пути на FTP сервере</param>
+        /// <param name="flag">флаг который отвечат за первое заполенение списка</param>
+        /// <param name="lb_folders"></param>
+        /// 
+        //private  void ListDirectories(string directory, List<FtpDataStuct> ftpDatalList,bool flag, Label lb_folders, Label lb_files)
+        //{
+        //    try
+        //    {
+        //        var url = string.IsNullOrEmpty(directory) ? HostUrl : HostUrl + "/" + directory;
+        //        var ftprequest = WebRequest.Create(url);
+        //        //ftprequest.Method = WebRequestMethods.Ftp.ListDirectory;
+        //        ftprequest.Method = WebRequestMethods.Ftp.ListDirectory;
+        //        ftprequest.Credentials = _networkCredential;
+        //        ftprequest.Timeout = 1200000;
+        //        using (var ftpresponse = (FtpWebResponse)ftprequest.GetResponse())
+        //        {
+        //            var responcestream = ftpresponse.GetResponseStream();
+        //            if (responcestream == null) return;
+        //            using (var streamreader = new StreamReader(responcestream))
+        //            {
+        //                _tmplist = new List<string>();
+        //                while (!streamreader.EndOfStream)
+        //                {
+        //                    var tmpDataStuct = new FtpDataStuct();
+        //                    var file = streamreader.ReadLine();
+
+        //                    if (file != null)
+        //                        if (file.Contains("."))
+        //                        {
+        //                            this._filesCount++;
+        //                            lb_files.Text = this._filesCount.ToString();
+        //                            lb_files.Refresh();
+        //                            _tmplist.Add(file);
+        //                            if (flag)
+        //                            {
+        //                                tmpDataStuct.FtpPath = file;
+        //                                tmpDataStuct.Checked = true;
+        //                                ftpDatalList.Add(tmpDataStuct);
+        //                            }
+        //                        }
+        //                        else
+        //                        {
+        //                            this._foldersCount++;
+        //                            lb_folders.Text = this._foldersCount.ToString();
+        //                            lb_folders.Refresh();
+        //                            //string tst = string.Empty;
+        //                            _tmplist.Add(file);
+        //                            if (flag)
+        //                            {
+        //                                tmpDataStuct.FtpPath = file;
+        //                                tmpDataStuct.Checked = false;
+        //                                ftpDatalList.Add(tmpDataStuct);
+        //                            }
+        //                        }
+        //                }
+        //            }
+        //        }
+        //    }
+        //    catch (WebException e)
+        //    {
+        //        var status = ((FtpWebResponse)e.Response).StatusDescription;
+        //        MessageBox.Show(status);
+        //        MessageBox.Show(e.Message);
+        //    }
+        //}
+        /// <summary>
+        /// ЕсТЬ ошибки не извесные
+        /// </summary>
+        /// <param name="directory"></param>
+        private  void ListDirectoriesInfo(string directory)
+        {
+            ErrorList = new List<string>();
+            //try
+            //{
+
+                var url = string.IsNullOrEmpty(directory) ? HostUrl : HostUrl + "/" + directory;
+                var ftprequest = WebRequest.Create(url);
+                //ftprequest.Method = WebRequestMethods.Ftp.ListDirectory;
+                ftprequest.Method = WebRequestMethods.Ftp.ListDirectoryDetails;
+                ftprequest.Credentials = _networkCredential;
+                ftprequest.Timeout = 1200000;
+                using (var ftpresponse = (FtpWebResponse) ftprequest.GetResponse())
+                {
+                    var responcestream = ftpresponse.GetResponseStream();
+                    if (responcestream == null) return;
+                    using (var streamreader = new StreamReader(responcestream))
+                    {
+                        _tmplist = new List<FtpDataStuct>();
+                        while (!streamreader.EndOfStream)
+                        {
+                            var tmpDataStuct = new FtpDataStuct();
+                            var file = streamreader.ReadLine();
+
+                            if (file != null)
+                            {
+                              string [] responseData =  FtpResponseParser(file);
+                                foreach (var err in responseData)
+                                {
+                                    ErrorList.Add(err);
+                                }
+                               // int fileNameIndex = responseData.Count()-1;
+                                if (IsDir(responseData[0]))//проверяем это папка или файл
+                                {
+                                    _foldersCount++;//увеличаваем счетчит папок на 1
+                                    tmpDataStuct.FtpPath = responseData[1]; // добавляем в структуру название найденого файла
+                                    tmpDataStuct.Checked = false; // помечаем папку что ее надо проверить
+                                    _tmplist.Add(tmpDataStuct);
+                                    
+                                    if (flag)
+                                    {
+                                        tmpDataStuct.FtpPath = responseData[1];
+                                        tmpDataStuct.Checked = false;
+                                        FtpDatalList.Add(tmpDataStuct);
+                                    }
+
+                                }
+                                else//файл
+                                {
+                                    _filesCount++;//увеличаваем счетчит файлов на 1
+                                    //string tempdata = FtpDatalList[i].FtpPath + tst1;
+                                    tmpDataStuct.FtpPath = responseData[1]; // добавляем в структуру название найденого файла
+                                    tmpDataStuct.Checked = true; // помечаем файл что проверять его не надо
+                                    _tmplist.Add(tmpDataStuct);
+                                    if (flag)
+                                    {
+                                        tmpDataStuct.FtpPath = responseData[1];
+                                        tmpDataStuct.Checked = true;
+                                        FtpDatalList.Add(tmpDataStuct);
+                                    }
+                                }
+
+                            }   
+                        }
+                        streamreader.Close();
+                    }
+                }
+            //}
+            //catch (WebException e)
+            //{
+            //    string tmp = "";
+            //    foreach (var err in ErrorList)
+            //    {
+            //        tmp+= " | " +err;
+            //    }
+            //    MessageBox.Show("ERROR in ListDirectoriesInfo "+ tmp );
+            //    var status = ((FtpWebResponse) e.Response).StatusDescription;
+            //    MessageBox.Show(status);
+            //    MessageBox.Show(e.Message);
+                
+            //}
+        }
+
+        /// <summary>
+        /// Метод сканирует FTP сервер и заполняет список FtpDatalList кторый состоит из структуры FtpDataStuct
+        /// </summary>
+        public void ScanFtp(Label lb_folders,Label lb_files,ListBox TestListbox)
+        {
+            try
+            {
+                string tst1 = string.Empty;//временная переменная 
+                //ListDirectories("", FtpDatalList, flag,lbfolders,files);// получаем файлы из Root папки
+                ListDirectoriesInfo("");
+                flag = false; // ставим флаг который говорит от том что в дальнешем данные в FtpDatalList будут заполнятся тут
+                do
+                {
+                    for (int i = 0; i < FtpDatalList.Count; i++)
+                    {
+                        if (FtpDatalList[i].Checked == false)// проверяем была ли проверена папка или файл
+                        {
+                            
+                                //ListDirectories(FtpDatalList[i].FtpPath, FtpDatalList, flag,folders,files);// получаем список файлов по указанной сылке
+                                ListDirectoriesInfo(FtpDatalList[i].FtpPath);
+                                if (_tmplist.Count > 0)//список файлов по сылке не пустой
+                                {
+                                    for (int k = 0; k < _tmplist.Count; k++)// для всех файлов в списке tmplist
+                                    {
+                                        //if (tmplist[k].Contains('/'))
+                                        //{
+                                        //    tst1 = "/" + tmplist[k].Split('/')[1];
+                                        //}
+                                        tst1 = "/" + _tmplist[k].FtpPath;
+                                        string tempdata = FtpDatalList[i].FtpPath + tst1;
+                                        FtpDataStuct tmps;
+                                        if (_tmplist[k].Checked) //это файл проверять его не надо
+                                        {
+                                             tmps = new FtpDataStuct {FtpPath = tempdata, Checked = true};
+                                        }
+                                        else// это папка ее надо проверять
+                                        {
+                                             tmps = new FtpDataStuct { FtpPath = tempdata };
+                                        }
+                                        tst1 = string.Empty;
+                                        FtpDatalList.Insert(i + 1, tmps);// добавляем данные из tmplist в  FtpDatalList
+                                        tempdata = string.Empty;
+                                    }
+                                    lb_files.Text = _filesCount.ToString();
+                                    lb_folders.Text = _foldersCount.ToString();
+                                }
+                                _tmplist = new List<FtpDataStuct>();// обнуляем данные tmplist
+                            
+
+                            var ftpDataStuct = FtpDatalList[i];
+                            ftpDataStuct.Checked = true; // ставим флаг что проверили текушею позицию
+                            FtpDatalList[i] = ftpDataStuct;
+                        }
+                    }
+                    //Thread.Sleep(100);// ожидаем 100 милисекунд
+               
+                    stop = CheckToStop();
+
+                }
+                while (stop);
+                foreach (var tmp  in FtpDatalList)
+                {
+                    TestListbox.Items.Add(tmp.FtpPath);
+                }
+            }
+            catch (WebException e)
+            {
+                String status = ((FtpWebResponse)e.Response).StatusDescription;
+                System.Windows.Forms.MessageBox.Show(status.ToString());
+            }
+            
+        }
+        /// <summary>
+        /// Метод задает формат Ftp хоста
+        /// </summary>
+        private static string HostUrl
+        {
+            get { return string.Format("ftp://{0}", FtpUserInfoVo.Host); }
+        }
+
+        /// <summary>
+        /// Метод проверят проверены ли папки и файлы в списке FtpDatalList если везде стоит true 
+        /// он прервет выполнения цикла в ScanFtp()
+        /// </summary>
+        /// <returns>True or False</returns>
+        private bool CheckToStop()
+        {
+            foreach (var VARIABLE in FtpDatalList)
+            {
+                if (VARIABLE.Checked == false)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        /// <summary>
+        /// Метод возврашает список сылок  на Ftp формат List(string)
+        /// </summary>
+        public List<string> GetCleanList()
+        {
+            List<string> FtpCleanDataList = new List<string>();
+            if (FtpDatalList.Count > 0)
+            {
+                foreach (var ftpData in FtpDatalList)
+                {
+                    FtpCleanDataList.Add(ftpData.FtpPath);
+                }
+                return FtpCleanDataList;
+            }
+            return null;
+        }
+        /// <summary>
+        /// Метод разбивает запрос над под строки 
+        /// 1 строка содержит атририбутый файла
+        /// 2 строка содержит название самого файла
+        ///  </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
+        private string[] FtpResponseParser(string line)
+        {
+           string[] parsedData = new string[2];
+           int pos =  line.IndexOf(' ');
+            int pos2 = line.IndexOf(':');
+            parsedData[0] = line.Substring(0, pos);
+            parsedData[1] = line.Substring(pos2 + 4, line.Length - pos2 - 4);
+            //string[] test = line.Split(' ');
+            return parsedData;
+        }
+
+        private bool IsDir(string line)
+        {
+            if (line.Contains('d'))
+            {
+                return true;
+            }
+            return false;
+        }
+      
+    }
+
+    
+}
