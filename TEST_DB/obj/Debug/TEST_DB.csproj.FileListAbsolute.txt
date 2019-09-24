@@ -1,0 +1,19 @@
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\bin\Debug\TEST_DB.exe.config
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\bin\Debug\TEST_DB.exe
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\bin\Debug\TEST_DB.pdb
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.csprojResolveAssemblyReference.cache
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.Form1.resources
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.Properties.Resources.resources
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.csproj.GenerateResource.Cache
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.exe
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.pdb
+C:\Users\OXYGEN\documents\visual studio 2013\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.Form2.resources
+S:\Projects\ProjectManager\TEST_DB\bin\Debug\TEST_DB.exe.config
+S:\Projects\ProjectManager\TEST_DB\bin\Debug\TEST_DB.exe
+S:\Projects\ProjectManager\TEST_DB\bin\Debug\TEST_DB.pdb
+S:\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.Form1.resources
+S:\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.Properties.Resources.resources
+S:\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.csproj.GenerateResource.Cache
+S:\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.exe
+S:\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.pdb
+S:\Projects\ProjectManager\TEST_DB\obj\Debug\TEST_DB.csprojResolveAssemblyReference.cache
