@@ -15,4 +15,6 @@ MySQL - для базы данных MySQL
 
 Threads - Потоки и все что сними связано
 
+datagrid - для работы с DataGridView
+
 read-write чтение запись в файл разные форматы
