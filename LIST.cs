@@ -14,3 +14,10 @@ Person FindPerson(int id) {
 
 // Then do this
 var person = FindPerson(123);
+
+
+Person FindPerson(int id) {
+   var people = DbContext.GetPeople(); // Returns List<Person>
+
+   return people.FirstOrDefault(x => x.ID == id);
+}
