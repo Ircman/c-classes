@@ -21,3 +21,12 @@ Person FindPerson(int id) {
 
    return people.FirstOrDefault(x => x.ID == id);
 }
+
+ public void MyComponentLegacyMethod(List<int> masterCollection)
+        {
+            //Without the ToList this linq query will be executed twice because of the following usage
+            var result = masterCollection.Where(i => i > 100).ToList();
+ 
+            Console.WriteLine(result.Count());
+            Console.WriteLine(result.Average());
+        }
