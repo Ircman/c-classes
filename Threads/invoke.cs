@@ -9,8 +9,13 @@ if (InvokeRequired)
 
 
 ----------------------------------------------------- второй способ
-  delegate void SetControlValueCallback(Control oControl, string propName, object propValue);
-
+   delegate void SetControlValueCallback(Control oControl, string propName, object propValue);
+        /// <summary>
+        /// Metoд позволяет получать контроль над элементами в другом процессе
+        /// </summary>
+        /// <param name="oControl">тип(TextBox)</param>
+        /// <param name="propName">Свойство (Text)</param>
+        /// <param name="propValue">Новое значение</param>
         private void SetControlPropertyValue(Control oControl, string propName, object propValue)
 
         {
