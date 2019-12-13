@@ -1,4 +1,4 @@
-/// <summary>
+    /// <summary>
     /// Класс для XML сериализации/десериализации 
     /// </summary>
     /// <typeparam name="T">Любой тип класса</typeparam>
@@ -44,4 +44,38 @@
         }
     }
     
-#read 
+// Пример: 
+
+// класс
+public class TestClass// должен быть публичным 
+    {
+        public int inttt { get; set; } // поля должны быть публичными 
+        public string str { get; set; } // поля должны быть публичными 
+        public bool b { get; set; } // поля должны быть публичными 
+
+
+        public TestClass(int inttt, string str, bool b)
+        {
+            this.inttt = inttt;
+            this.str = str;
+            this.b = b;
+        }
+
+        public TestClass() // должен быть констуктор без параметров
+        {
+            
+        }
+    }
+
+// пример использования запись в файл :
+XmlSerialization<TestClass> xmlSerialization = new XmlSerialization<TestClass>();
+TestClass tsClass = new TestClass(1,"string",true);
+xmlSerialization.WriteData("asd.txt",tsClass);
+// пример использования чтение из файла :
+XmlSerialization<TestClass> xmlSerialization = new XmlSerialization<TestClass>();
+TestClass tsClass = new TestClass();
+tsClass = (TestClass)xmlSerialization.ReadData("asd.txt", tsClass);
+
+
+
+
