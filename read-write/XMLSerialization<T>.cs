@@ -1,3 +1,8 @@
+   //блилиотеки
+   using System;
+   using System.IO;
+   using System.Xml.Serialization;
+
     /// <summary>
     /// Класс для XML сериализации/десериализации 
     /// </summary>
