@@ -177,7 +177,9 @@ namespace ProjectManager.ClassFolder
         /// Метод скачивает один файл с ftp во временную папку в программе
         /// </summary>
         /// <param name="downloadFrom">путь к файлу на FTP (от корня /)</param>
+#pragma warning disable 1998
         public async Task SingleDownload(string downloadFrom)
+#pragma warning restore 1998
         {
             try
             {
@@ -190,21 +192,101 @@ namespace ProjectManager.ClassFolder
                 request.Method = WebRequestMethods.Ftp.DownloadFile;
                 request.Credentials = _networkCredential;
                 // Read the file from the server & write to destination                
-                using (FtpWebResponse response = (FtpWebResponse) request.GetResponse())
-                using (Stream responseStream = response.GetResponseStream())
-                    if (responseStream != null)
-                        using (StreamReader reader = new StreamReader(responseStream))
-                        using (StreamWriter destination = new StreamWriter(destinationFile))
-                        {
-                           destination.Write(reader.ReadToEnd());
-                            destination.Flush();
-                        }
+                using (var ftpStream = request.GetResponse().GetResponseStream())
+                using (Stream fileStream = File.Create(destinationFile))
+                {
+                    var buffer = new byte[10240];
+                    int read;
+                    while (ftpStream != null && (read = ftpStream.Read(buffer, 0, buffer.Length)) > 0)
+                        fileStream.Write(buffer, 0, read);
+                }
+                
             }
             catch (Exception e)
             {
                 Error.Msg(e);
             }
             
+        }
+
+
+#pragma warning disable 1998
+        /// <summary>
+        /// Метод скачивает файл с FTP в папку
+        /// </summary>
+        /// <param name="downloadFrom">полный путь к файлу</param>
+        /// <param name="downloadTo">папка куда скачать файл</param>
+        /// <returns></returns>
+        public async Task Download(string downloadFrom , string downloadTo)
+#pragma warning restore 1998
+        {
+//            FtpWebRequest request =(FtpWebRequest)WebRequest.Create("ftp://ftp.example.com/remote/path/file.zip");
+//            request.Credentials = new NetworkCredential("username", "password");
+//            request.Method = WebRequestMethods.Ftp.DownloadFile;
+//
+//            using (Stream ftpStream = request.GetResponse().GetResponseStream())
+//            using (Stream fileStream = File.Create(@"C:\local\path\file.zip"))
+//            {
+//                byte[] buffer = new byte[10240];
+//                int read;
+//                while ((read = ftpStream.Read(buffer, 0, buffer.Length)) > 0)
+//                {
+//                    fileStream.Write(buffer, 0, read);
+//                    Console.WriteLine("Downloaded {0} bytes", fileStream.Position);
+//                }
+//            }
+
+
+
+            try
+            {
+                var serverPath = string.Format("ftp://{0}/{1}", _ftpUserInfo.Host, downloadFrom);
+                var destinationFile = GlobalConfig.TmpDir + Path.GetFileName(downloadFrom);
+                var request = (FtpWebRequest) WebRequest.Create(serverPath);
+                request.KeepAlive = true;
+                request.UsePassive = true;
+                request.UseBinary = true;
+                request.Method = WebRequestMethods.Ftp.DownloadFile;
+                request.Credentials = _networkCredential;
+                // Read the file from the server & write to destination                
+                using (var ftpStream = request.GetResponse().GetResponseStream())
+                using (Stream fileStream = File.Create(destinationFile))
+                {
+                    var buffer = new byte[10240];
+                    int read;
+                    while (ftpStream != null && (read = ftpStream.Read(buffer, 0, buffer.Length)) > 0)
+                        fileStream.Write(buffer, 0, read);
+                }
+
+            }
+            catch (Exception e)
+            {
+                Error.Msg(e);
+            }
+
+        }
+
+        /// <summary>
+        /// Метод переименовавает файл
+        /// </summary>
+        /// <param name="fullPathWithFileName">полны путь до файла на FTP </param>
+        /// <param name="renameToFilename">название файла на что переименовать</param>
+        public void RenameFile(string fullPathWithFileName, string renameToFilename)
+        {
+
+            FtpWebResponse ftpResponse = null;
+            FtpWebRequest request = null;
+            string serverPath = string.Format("ftp://{0}/{1}", _ftpUserInfo.Host, fullPathWithFileName);
+            request = (FtpWebRequest)WebRequest.Create(serverPath);
+            request.Credentials = _networkCredential;
+            request.UseBinary = true;
+            request.UsePassive = true;
+            request.KeepAlive = true;
+            request.Method = WebRequestMethods.Ftp.Rename;
+            request.RenameTo = "serverPath";//rename to nado ukzatj na kakoj fajl
+            ftpResponse = (FtpWebResponse)request.GetResponse();
+            ftpResponse.Close();
+  
         }
         /// <summary>
         /// Метод загружает файлы на FTP сервер
@@ -242,12 +324,11 @@ namespace ProjectManager.ClassFolder
                     if (ftpstream != null) //закрываем поток
                     {
                         ftpstream.Close();
-                        ftpstream.Dispose();
                     }
                     if (directory != null)
                     {
-                        MkDir(directory.ToLower()); //создаем папку
-                        UploadFile(directory, filepath); //повторяем загрузку
+                       MkDirFullPath(directory.ToLower()); //создаем папку
+                       UploadFile(directory, filepath); //повторяем загрузку
                     }
                 }
                 else
@@ -356,7 +437,7 @@ namespace ProjectManager.ClassFolder
                                         tmps.FtpPath = tempdata;
                                         tst1 = string.Empty;
                                         FtpDatalList.Insert(i + 1, tmps);// добавляем данные из tmplist в  FtpDatalList
-                                        tempdata = string.Empty;
+                                        
                                     }
                                 }
                                 _tmplist = new List<string>();// обнуляем данные tmplist
@@ -367,7 +448,7 @@ namespace ProjectManager.ClassFolder
                         }
                     }
                     Thread.Sleep(100);// ожидаем 100
-                    _stop = CheckToStop();
+                    _stop = true;
                 }
                 while (_stop);
             }
@@ -379,23 +460,7 @@ namespace ProjectManager.ClassFolder
         public static string HostUrl
         {
             get { return string.Format("ftp://{0}", _ftpUserInfo.Host); }
-        }
-        /// <summary>
-        /// Метод проверят проверены ли папки и файлы в списке FtpDatalList если везде стоит true 
-        /// он прервет выполнения цикла в ScanFtp()
-        /// </summary>
-        /// <returns>True or False</returns>
-        private bool CheckToStop()
-        {
-            foreach (var VARIABLE in FtpDatalList)
-            {
-                if (VARIABLE.Checked == false)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
+        }  
         public string[] Return(string filepath, string username, string password)
         {
             List<string> directories = new List<string>();
@@ -419,8 +484,47 @@ namespace ProjectManager.ClassFolder
             }
             return directories.ToArray();
         }
+        /// <summary>
+        /// Метод создает полный путь 
+        /// </summary>
+        /// <param name="path"></param>
+        public void MkDirFullPath(string path)
+        {
+            var tmpFolders = path.Split('/');
+            string createPath=string.Empty;
+            int i = 0;
+            foreach (var folder in tmpFolders)
+            {
+                if (string.IsNullOrEmpty(folder)==false)
+                {
+                    if (i == 0)
+                    {
+                        i++;
+                        createPath = "/" + folder + "/";
+                        MkDir(createPath);
+                    }
+                    else
+                    {
+                        i++;
+                        createPath += folder+"/";
+                        MkDir(createPath);
+                    }
+                }
+                
+            }
+
+
+
+
+
+        }
+        /// <summary>
+        /// Метод создает папку
+        /// </summary>
+        /// <param name="folder"></param>
         public void MkDir(string folder)
         {
+
                FtpWebRequest ftp_web_request = null;
                FtpWebResponse ftp_web_response = null;
                 string ftp_path = HostUrl + folder;
@@ -447,7 +551,7 @@ namespace ProjectManager.ClassFolder
             }
             finally
             {
-                ftp_web_response.Close();
+                if (ftp_web_response != null) ftp_web_response.Close();
             }
         }
     }
