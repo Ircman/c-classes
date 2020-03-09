@@ -13,6 +13,8 @@ FTP - для работы с FTP
 
 MySQL - для базы данных MySQL
 
+SQLite - все для работы с этой базой
+
 Threads - Потоки и все что сними связано
 
 datagrid - для работы с DataGridView
