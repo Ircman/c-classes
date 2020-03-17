@@ -14,23 +14,21 @@
         /// Метод десриализует файл в формате XML
         /// </summary>
         /// <param name="filePath">Путь к файлу</param>
-        /// <param name="obj">Переменная класса</param>
-        /// <returns>возврашает object который надо приводить к типу класса (ClassType)</returns>
-        public Object ReadData(string filePath, Object obj)
+        /// <returns>возврашает object приведеный к типу</returns>
+        public T ReadData(string filePath)
         {
-            if (obj == null) throw new ArgumentNullException("obj");
-
+           
             if (File.Exists(filePath))
             {
                 using (FileStream fs = new FileStream(filePath, FileMode.Open))
                 {
                     XmlSerializer xser = new XmlSerializer(typeof(T));
-                    obj = (T)xser.Deserialize(fs);
+                    _obj = (T)xser.Deserialize(fs);
                     fs.Close();
                 }
-                return obj;
-            }   
-                throw new Exception("file does not exist");
+                return (T)Convert.ChangeType(_obj, typeof(T));
+            }
+            throw new Exception("file does not exist");
         }
         /// <summary>
         /// Метод сериализует класс в формат XML и пишет его в файл
@@ -79,7 +77,7 @@ xmlSerialization.WriteData("asd.txt",tsClass);
 // пример использования чтение из файла :
 XmlSerialization<TestClass> xmlSerialization = new XmlSerialization<TestClass>();
 TestClass tsClass = new TestClass();
-tsClass = (TestClass)xmlSerialization.ReadData("asd.txt", tsClass);
+tsClass = xmlSerialization.ReadData("asd.txt");
 
 
 
