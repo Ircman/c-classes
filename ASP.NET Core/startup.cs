@@ -17,6 +17,7 @@ namespace LesonAsp
         {
             //service тут
             services.AddMvc();
+                             //интерфей , класс
              services.AddScoped<Iperson, Person>(); // один экземпляр сервиса создается на весь запрос
              services.AddTransient<Iperson, Person>(); //каждый запрос будет создаватся новый экземпляр
              services.AddSingleton<Iperson, Person>(); // один создается на все время жизни обькта
