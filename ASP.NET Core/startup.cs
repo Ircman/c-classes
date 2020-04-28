@@ -15,7 +15,11 @@ namespace LesonAsp
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            //service тут
             services.AddMvc();
+             services.AddScoped<Iperson, Person>(); // один экземпляр сервиса создается на весь запрос
+             services.AddTransient<Iperson, Person>(); //каждый запрос будет создаватся новый экземпляр
+             services.AddSingleton<Iperson, Person>(); // один создается на все время жизни обькта
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
