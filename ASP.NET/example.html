@@ -1,0 +1,12 @@
+
+//post form 
+@using (Html.BeginForm("Register", "Register", FormMethod.Post, new { @onsubmit = "return validateForm()" }))
+{
+  option 1 
+ @Html.TextBoxFor(model => model.Surname, new { @class = "datepicker", Value=String.Format("{0:d}", Model.Surname) })
+ option 2
+ Атрибут name важен он будет добавлен в класс или метод как аргумент
+ <input class="text_box_id" name="Surname" type="text" id="surname" placeholder="@MyTracking.Resources.RegisterMenu.EnterSurname" >
+ 
+ <button type="submit" id="bt_register">кнопка</button>
+}
