@@ -109,7 +109,6 @@ namespace TestDB1111
                 _connection.Open();
                 if (IsConnected())
                 {
-                    _connection.Open();
                     var cmd = _connection.CreateCommand();
                     cmd.CommandText = query;
                     cmd.ExecuteNonQuery();
